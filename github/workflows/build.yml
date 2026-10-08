@@ -1,0 +1,44 @@
+name: Build APK
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar proyecto
+        run: |
+          ZIP=$(ls *.zip 2>/dev/null | head -n 1)
+          if [ -n "$ZIP" ]; then
+            mkdir -p proyecto
+            unzip -o "$ZIP" -d proyecto
+          fi
+          S=$(find . -name settings.gradle.kts -not -path "./.git/*" | head -n 1)
+          if [ -z "$S" ]; then
+            echo "No se encontró settings.gradle.kts"
+            exit 1
+          fi
+          echo "PROJECT_DIR=$(dirname "$S")" >> $GITHUB_ENV
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.5'
+
+      - name: Compilar APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: gradle assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: RutasAR-apk
+          path: ${{ env.
